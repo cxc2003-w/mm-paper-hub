@@ -1,0 +1,10 @@
+{
+  "name": "mm-paper-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multimodal paper collection website with real arXiv data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

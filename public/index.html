@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MM Paper Hub</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow"></div>
+    <header class="container hero">
+      <div class="hero-badge">Real arXiv Feed</div>
+      <h1>MM Paper Hub</h1>
+      <p>多模态论文发现、筛选与收藏，一站式工作台</p>
+      <div id="quick-tags" class="quick-tags"></div>
+    </header>
+
+    <main class="container">
+      <section class="panel">
+        <form id="search-form">
+          <input id="query" type="text" placeholder="输入关键词，例如：vision language model" />
+          <button type="submit">搜索</button>
+        </form>
+        <div class="meta-row">
+          <div class="meta-left">
+            <span id="status">准备就绪</span>
+            <span id="total-badge" class="result-badge"></span>
+          </div>
+          <button id="refresh-favorites" type="button" class="ghost-btn">刷新收藏</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>搜索结果</h2>
+          <p id="empty-tips" class="muted hidden">没有结果，试试更具体关键词，如 "multimodal agent planning"</p>
+          <div id="results" class="list"></div>
+        </div>
+        <div class="panel">
+          <h2>我的收藏</h2>
+          <div id="favorites" class="list"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="paper-card">
+      <article class="card">
+        <h3 class="title"></h3>
+        <p class="sub"></p>
+        <p class="summary"></p>
+        <div class="actions">
+          <a class="pdf" target="_blank" rel="noreferrer">PDF</a>
+          <a class="abs" target="_blank" rel="noreferrer">ArXiv</a>
+          <button class="save">收藏</button>
+          <button class="remove danger hidden">移除</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>

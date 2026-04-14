@@ -21,20 +21,74 @@
           <input id="query" type="text" placeholder="输入关键词，例如：vision language model" />
           <button type="submit">搜索</button>
         </form>
+
+        <div class="filters">
+          <label>
+            每页数量
+            <select id="page-size">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <label>
+            排序
+            <select id="sort-mode">
+              <option value="date_desc" selected>最新优先</option>
+              <option value="date_asc">最早优先</option>
+              <option value="title_asc">标题 A-Z</option>
+            </select>
+          </label>
+          <label>
+            年份
+            <input id="year-filter" type="number" placeholder="如 2025" min="1990" max="2099" />
+          </label>
+          <label>
+            作者
+            <input id="author-filter" type="text" placeholder="作者名关键词" />
+          </label>
+        </div>
+
         <div class="meta-row">
           <div class="meta-left">
             <span id="status">准备就绪</span>
             <span id="total-badge" class="result-badge"></span>
           </div>
-          <button id="refresh-favorites" type="button" class="ghost-btn">刷新收藏</button>
+          <div class="meta-actions">
+            <button id="refresh-favorites" type="button" class="ghost-btn">刷新收藏</button>
+            <button id="export-favorites" type="button" class="ghost-btn">导出收藏 JSON</button>
+          </div>
         </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat-card">
+          <p class="stat-label">当前页结果</p>
+          <p id="stat-page-count" class="stat-value">0</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">收藏数量</p>
+          <p id="stat-fav-count" class="stat-value">0</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">当前关键词</p>
+          <p id="stat-query" class="stat-value stat-small">-</p>
+        </article>
       </section>
 
       <section class="grid">
         <div class="panel">
           <h2>搜索结果</h2>
-          <p id="empty-tips" class="muted hidden">没有结果，试试更具体关键词，如 "multimodal agent planning"</p>
+          <p id="empty-tips" class="muted hidden">
+            没有结果，试试更具体关键词，如 "multimodal agent planning"
+          </p>
           <div id="results" class="list"></div>
+          <div class="pagination">
+            <button id="prev-page" type="button" class="ghost-btn">上一页</button>
+            <span id="page-indicator" class="muted">第 1 页</span>
+            <button id="next-page" type="button" class="ghost-btn">下一页</button>
+          </div>
         </div>
         <div class="panel">
           <h2>我的收藏</h2>
@@ -59,4 +113,4 @@
 
     <script src="/app.js"></script>
   </body>
-  </html>
+</html>

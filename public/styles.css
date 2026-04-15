@@ -1,421 +1,373 @@
-const searchForm = document.getElementById("search-form");
-const queryInput = document.getElementById("query");
-const statusEl = document.getElementById("status");
-const resultsEl = document.getElementById("results");
-const favoritesEl = document.getElementById("favorites");
-const refreshFavoritesBtn = document.getElementById("refresh-favorites");
-const exportFavoritesBtn = document.getElementById("export-favorites");
-const cardTpl = document.getElementById("paper-card");
-const quickTagsEl = document.getElementById("quick-tags");
-const totalBadgeEl = document.getElementById("total-badge");
-const emptyTipsEl = document.getElementById("empty-tips");
-const lastUpdatedEl = document.getElementById("last-updated");
-const autoRefreshEl = document.getElementById("auto-refresh");
-const sseLiveEl = document.getElementById("sse-live");
-const refreshIntervalEl = document.getElementById("refresh-interval");
-const liveTipEl = document.getElementById("live-tip");
-const sseStatusEl = document.getElementById("sse-status");
-const pageSizeEl = document.getElementById("page-size");
-const sortModeEl = document.getElementById("sort-mode");
-const yearFilterEl = document.getElementById("year-filter");
-const authorFilterEl = document.getElementById("author-filter");
-const prevPageBtn = document.getElementById("prev-page");
-const nextPageBtn = document.getElementById("next-page");
-const pageIndicatorEl = document.getElementById("page-indicator");
-const statPageCountEl = document.getElementById("stat-page-count");
-const statFavCountEl = document.getElementById("stat-fav-count");
-const statQueryEl = document.getElementById("stat-query");
-const themeToggleEl = document.getElementById("theme-toggle");
-const activeFiltersEl = document.getElementById("active-filters");
-
-let favoriteIds = new Set();
-let favoritesCache = [];
-let currentPage = 1;
-let currentPapers = [];
-let autoRefreshTimer = null;
-let streamSource = null;
-let isSearching = false;
-const API_BASE = location.protocol === "file:" ? "http://localhost:3000" : "";
-const QUICK_TAGS = [
-  "multimodal model",
-  "vision language model",
-  "video language model",
-  "audio language model",
-  "multimodal agent"
-];
-
-function apiUrl(path) {
-  return `${API_BASE}${path}`;
+* {
+  box-sizing: border-box;
 }
-
-function shortText(text, max = 220) {
-  if (!text) return "";
-  return text.length > max ? text.slice(0, max) + "..." : text;
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  background: radial-gradient(circle at top left, #1b2a52, #0b1220 45%, #090f1b 90%);
+  color: #eaf1ff;
+  min-height: 100vh;
 }
-
-function formatDate(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toISOString().slice(0, 10);
+body.light {
+  background: radial-gradient(circle at top left, #d8e8ff, #f4f8ff 45%, #e7efff 90%);
+  color: #10233e;
 }
-
-function formatTime(value) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleTimeString("zh-CN", { hour12: false });
+.container {
+  width: min(1160px, 94vw);
+  margin: 0 auto;
 }
-
-function renderSkeletons(count = 6) {
-  resultsEl.innerHTML = "";
-  for (let i = 0; i < count; i += 1) {
-    const block = document.createElement("div");
-    block.className = "skeleton";
-    resultsEl.appendChild(block);
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  background: rgba(8, 14, 27, 0.65);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+}
+body.light .top-nav {
+  background: rgba(245, 250, 255, 0.8);
+  border-bottom-color: rgba(148, 163, 184, 0.6);
+}
+.nav-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 56px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #3b82f6;
+  box-shadow: 0 0 12px #3b82f6;
+}
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.nav-link {
+  line-height: 1;
+}
+.bg-glow {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.25), transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+}
+body.light .bg-glow {
+  background:
+    radial-gradient(circle at 82% 16%, rgba(59, 130, 246, 0.28), transparent 42%),
+    radial-gradient(circle at 20% 84%, rgba(99, 102, 241, 0.2), transparent 46%);
+}
+.hero {
+  padding: 36px 0 16px;
+}
+h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: 0.2px;
+}
+.hero p {
+  margin: 12px 0 14px;
+  color: #b8cae9;
+  font-size: 18px;
+}
+.hero-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.5);
+  background: rgba(30, 64, 175, 0.25);
+  color: #bfdbfe;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.panel {
+  background: rgba(12, 21, 39, 0.8);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 30px rgba(2, 6, 23, 0.35);
+}
+body.light .panel,
+body.light .stat-card,
+body.light .card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #c5d4ea;
+  box-shadow: 0 8px 24px rgba(148, 163, 184, 0.22);
+}
+body.light .hero p,
+body.light .muted,
+body.light .stat-label {
+  color: #4a6281;
+}
+body.light .title,
+body.light h2,
+body.light h1 {
+  color: #0f2747;
+}
+form {
+  display: flex;
+  gap: 10px;
+}
+select {
+  background: #060c19;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+input {
+  flex: 1;
+  background: #060c19;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+button,
+a {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+button:hover,
+a:hover {
+  transform: translateY(-1px);
+}
+button.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+.ghost-btn {
+  background: transparent;
+  border: 1px solid #365278;
+  color: #cbd5e1;
+}
+.quick-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tag-btn {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(100, 116, 139, 0.55);
+  color: #dbeafe;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.active-filters {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-chip {
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(30, 64, 175, 0.2);
+  color: #dbeafe;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+body.light .filter-chip {
+  background: #e5efff;
+  color: #24508d;
+  border-color: #aac4ee;
+}
+.meta-row {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filters {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #a8bbda;
+}
+.meta-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  background: rgba(14, 24, 45, 0.85);
+  border: 1px solid #2b3e5b;
+  border-radius: 12px;
+  padding: 12px;
+}
+.stat-label {
+  margin: 0;
+  color: #9fb0cb;
+  font-size: 12px;
+}
+.stat-value {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.stat-small {
+  font-size: 16px;
+}
+.result-badge {
+  font-size: 12px;
+  color: #bfdbfe;
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.result-badge.ghost {
+  color: #c9d6ea;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+.result-badge.live {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.5);
+  background: rgba(20, 83, 45, 0.25);
+}
+.live-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.switch-row {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+}
+.switch-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+.list {
+  display: grid;
+  gap: 10px;
+}
+.card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+}
+.card {
+  border: 1px solid #2b3e5b;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.7), rgba(10, 16, 30, 0.85));
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.card:hover {
+  border-color: #4d6c95;
+  transform: translateY(-2px);
+}
+.skeleton {
+  border-radius: 10px;
+  height: 130px;
+  background: linear-gradient(110deg, rgba(51, 65, 85, 0.4) 8%, rgba(96, 116, 142, 0.55) 18%, rgba(51, 65, 85, 0.4) 33%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position-x: -200%;
   }
 }
-
-function renderActiveFilters() {
-  const chips = [];
-  const yearInput = (yearFilterEl.value || "").trim();
-  const authorInput = (authorFilterEl.value || "").trim();
-  if (yearInput) chips.push(`年份: ${yearInput}`);
-  if (authorInput) chips.push(`作者: ${authorInput}`);
-  if (sortModeEl.value === "date_desc") chips.push("排序: 最新");
-  if (sortModeEl.value === "date_asc") chips.push("排序: 最早");
-  if (sortModeEl.value === "title_asc") chips.push("排序: 标题");
-  chips.push(`每页: ${pageSizeEl.value}`);
-
-  activeFiltersEl.innerHTML = "";
-  chips.forEach(text => {
-    const chip = document.createElement("span");
-    chip.className = "filter-chip";
-    chip.textContent = text;
-    activeFiltersEl.appendChild(chip);
-  });
+.title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.4;
 }
-
-function closeRealtimeStream() {
-  if (streamSource) {
-    streamSource.close();
-    streamSource = null;
+.sub {
+  margin: 0 0 8px;
+  color: #9cc5ff;
+  font-size: 13px;
+}
+.summary {
+  margin: 0 0 10px;
+  color: #d1ddf1;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.muted {
+  color: #9fb0cb;
+  font-size: 14px;
+}
+.hidden {
+  display: none;
+}
+@media (max-width: 900px) {
+  h1 {
+    font-size: 30px;
   }
-  sseStatusEl.textContent = "实时: 关闭";
-  sseStatusEl.classList.remove("live");
-}
-
-function openRealtimeStream() {
-  closeRealtimeStream();
-  if (!sseLiveEl.checked) return;
-
-  const q = queryInput.value.trim() || "multimodal";
-  const interval = Number(refreshIntervalEl.value || 60);
-  const streamUrl = apiUrl(`/api/stream?q=${encodeURIComponent(q)}&interval=${interval}`);
-  sseStatusEl.textContent = "实时: 连接中";
-
-  streamSource = new EventSource(streamUrl);
-  streamSource.onopen = () => {
-    sseStatusEl.textContent = "实时: 已连接";
-    sseStatusEl.classList.add("live");
-  };
-  streamSource.onerror = () => {
-    sseStatusEl.textContent = "实时: 重连中";
-    sseStatusEl.classList.remove("live");
-  };
-  streamSource.addEventListener("snapshot", event => {
-    const data = JSON.parse(event.data || "{}");
-    sseStatusEl.textContent = `实时: 监控 ${data.q || q}`;
-    sseStatusEl.classList.add("live");
-  });
-  streamSource.addEventListener("new_papers", event => {
-    const data = JSON.parse(event.data || "{}");
-    const papers = Array.isArray(data.papers) ? data.papers : [];
-    if (!papers.length) return;
-
-    const merged = [...papers, ...currentPapers];
-    const dedup = [];
-    const seen = new Set();
-    merged.forEach(paper => {
-      if (!paper.id || seen.has(paper.id)) return;
-      seen.add(paper.id);
-      dedup.push(paper);
-    });
-    currentPapers = dedup;
-    statusEl.textContent = `实时新增 ${papers.length} 篇论文`;
-    lastUpdatedEl.textContent = `更新于 ${formatTime(Date.now())}`;
-    renderResults();
-    renderActiveFilters();
-  });
-}
-
-function createPaperCard(paper, { inFavoriteList = false } = {}) {
-  const frag = cardTpl.content.cloneNode(true);
-  const root = frag.querySelector(".card");
-  const title = frag.querySelector(".title");
-  const sub = frag.querySelector(".sub");
-  const summary = frag.querySelector(".summary");
-  const pdf = frag.querySelector(".pdf");
-  const abs = frag.querySelector(".abs");
-  const saveBtn = frag.querySelector(".save");
-  const removeBtn = frag.querySelector(".remove");
-
-  title.textContent = paper.title || "(无标题)";
-  sub.textContent = `${(paper.authors || []).slice(0, 4).join(", ") || "未知作者"} | ${formatDate(paper.published)}`;
-  summary.textContent = shortText(paper.summary || "无摘要");
-  pdf.href = paper.pdfLink || "#";
-  abs.href = paper.id || "#";
-
-  if (inFavoriteList) {
-    saveBtn.classList.add("hidden");
-    removeBtn.classList.remove("hidden");
-  } else if (favoriteIds.has(paper.id)) {
-    saveBtn.textContent = "已收藏";
-    saveBtn.disabled = true;
+  .grid {
+    grid-template-columns: 1fr;
   }
-
-  saveBtn.addEventListener("click", async () => {
-    await fetch(apiUrl("/api/favorites"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(paper)
-    });
-    favoriteIds.add(paper.id);
-    saveBtn.textContent = "已收藏";
-    saveBtn.disabled = true;
-    await loadFavorites();
-  });
-
-  removeBtn.addEventListener("click", async () => {
-    await fetch(apiUrl(`/api/favorites/${encodeURIComponent(paper.id)}`), { method: "DELETE" });
-    favoriteIds.delete(paper.id);
-    root.remove();
-    await loadFavorites();
-  });
-
-  return frag;
-}
-
-function getFilteredAndSortedPapers(papers) {
-  const yearInput = (yearFilterEl.value || "").trim();
-  const authorInput = (authorFilterEl.value || "").trim().toLowerCase();
-  const sortMode = sortModeEl.value;
-
-  let list = papers.filter(paper => {
-    const paperYear = String(formatDate(paper.published)).slice(0, 4);
-    const matchesYear = !yearInput || paperYear === yearInput;
-    const matchesAuthor =
-      !authorInput || (paper.authors || []).some(name => String(name).toLowerCase().includes(authorInput));
-    return matchesYear && matchesAuthor;
-  });
-
-  if (sortMode === "date_desc") list.sort((a, b) => new Date(b.published) - new Date(a.published));
-  if (sortMode === "date_asc") list.sort((a, b) => new Date(a.published) - new Date(b.published));
-  if (sortMode === "title_asc") list.sort((a, b) => String(a.title).localeCompare(String(b.title)));
-  return list;
-}
-
-function renderResults() {
-  const list = getFilteredAndSortedPapers(currentPapers);
-  resultsEl.innerHTML = "";
-  emptyTipsEl.classList.add("hidden");
-
-  if (!list.length) {
-    totalBadgeEl.textContent = "0 Results";
-    statPageCountEl.textContent = "0";
-    emptyTipsEl.classList.remove("hidden");
-    return;
+  .filters {
+    grid-template-columns: 1fr 1fr;
   }
-
-  list.forEach(paper => resultsEl.appendChild(createPaperCard(paper)));
-  totalBadgeEl.textContent = `${list.length} Results`;
-  statPageCountEl.textContent = String(list.length);
-}
-
-async function loadFavorites() {
-  try {
-    const res = await fetch(apiUrl("/api/favorites"));
-    const data = await res.json();
-    const items = data.items || [];
-    favoritesCache = items;
-    favoriteIds = new Set(items.map(item => item.id));
-    statFavCountEl.textContent = String(items.length);
-
-    favoritesEl.innerHTML = "";
-    if (!items.length) {
-      favoritesEl.innerHTML = "<p class='muted'>暂无收藏</p>";
-      return;
-    }
-    items.forEach(item => favoritesEl.appendChild(createPaperCard(item, { inFavoriteList: true })));
-  } catch (error) {
-    favoritesEl.innerHTML = "<p class='muted'>收藏加载失败</p>";
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .card-grid {
+    grid-template-columns: 1fr;
   }
 }
-
-async function runSearch() {
-  if (isSearching) return;
-  isSearching = true;
-  const q = queryInput.value.trim() || "multimodal";
-  const pageSize = Number(pageSizeEl.value || 20);
-  const start = (currentPage - 1) * pageSize;
-
-  statusEl.textContent = "正在搜索...";
-  pageIndicatorEl.textContent = `第 ${currentPage} 页`;
-  statQueryEl.textContent = q;
-  totalBadgeEl.textContent = "";
-  emptyTipsEl.classList.add("hidden");
-  renderSkeletons(Math.min(pageSize, 8));
-
-  try {
-    const url = apiUrl(`/api/search?q=${encodeURIComponent(q)}&start=${start}&max=${pageSize}`);
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || data.error || "请求失败");
-
-    currentPapers = data.papers || [];
-    statusEl.textContent = `关键词 "${q}"，返回 ${currentPapers.length} 篇`;
-    if (!currentPapers.length) {
-      totalBadgeEl.textContent = "0 Results";
-      statPageCountEl.textContent = "0";
-      emptyTipsEl.classList.remove("hidden");
-      return;
-    }
-    renderResults();
-    renderActiveFilters();
-    lastUpdatedEl.textContent = `更新于 ${formatTime(Date.now())}`;
-  } catch (err) {
-    statusEl.textContent = "搜索失败";
-    statPageCountEl.textContent = "0";
-    emptyTipsEl.classList.remove("hidden");
-    resultsEl.innerHTML = `<p class='muted'>错误：${(err && err.message) || "未知错误"}</p>`;
-  } finally {
-    isSearching = false;
-  }
-}
-
-function stopAutoRefresh() {
-  if (autoRefreshTimer) {
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = null;
-  }
-}
-
-function setupAutoRefresh() {
-  stopAutoRefresh();
-  if (sseLiveEl.checked) {
-    liveTipEl.textContent = "实时模式已开启（自动刷新已关闭）";
-    return;
-  }
-  if (!autoRefreshEl.checked) {
-    liveTipEl.textContent = "关闭（手动搜索）";
-    return;
-  }
-  const seconds = Number(refreshIntervalEl.value || 60);
-  liveTipEl.textContent = `开启（每 ${seconds} 秒自动刷新）`;
-  autoRefreshTimer = setInterval(async () => {
-    await runSearch();
-    await loadFavorites();
-  }, seconds * 1000);
-}
-
-function exportFavorites() {
-  const blob = new Blob([JSON.stringify(favoritesCache, null, 2)], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "favorites.json";
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-searchForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  currentPage = 1;
-  await runSearch();
-  openRealtimeStream();
-});
-
-refreshFavoritesBtn.addEventListener("click", loadFavorites);
-exportFavoritesBtn.addEventListener("click", exportFavorites);
-autoRefreshEl.addEventListener("change", setupAutoRefresh);
-sseLiveEl.addEventListener("change", () => {
-  if (sseLiveEl.checked) {
-    autoRefreshEl.checked = false;
-  }
-  setupAutoRefresh();
-  openRealtimeStream();
-});
-refreshIntervalEl.addEventListener("change", () => {
-  setupAutoRefresh();
-  openRealtimeStream();
-});
-sortModeEl.addEventListener("change", () => {
-  renderResults();
-  renderActiveFilters();
-});
-yearFilterEl.addEventListener("input", () => {
-  renderResults();
-  renderActiveFilters();
-});
-authorFilterEl.addEventListener("input", () => {
-  renderResults();
-  renderActiveFilters();
-});
-pageSizeEl.addEventListener("change", async () => {
-  currentPage = 1;
-  renderActiveFilters();
-  await runSearch();
-  openRealtimeStream();
-});
-prevPageBtn.addEventListener("click", async () => {
-  if (currentPage <= 1) return;
-  currentPage -= 1;
-  await runSearch();
-  openRealtimeStream();
-});
-nextPageBtn.addEventListener("click", async () => {
-  currentPage += 1;
-  await runSearch();
-  openRealtimeStream();
-});
-
-function renderQuickTags() {
-  QUICK_TAGS.forEach(tag => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "tag-btn";
-    button.textContent = tag;
-    button.addEventListener("click", async () => {
-      queryInput.value = tag;
-      currentPage = 1;
-      await runSearch();
-      openRealtimeStream();
-    });
-    quickTagsEl.appendChild(button);
-  });
-}
-
-function applyTheme(theme) {
-  const light = theme === "light";
-  document.body.classList.toggle("light", light);
-  localStorage.setItem("mm-theme", light ? "light" : "dark");
-}
-
-themeToggleEl.addEventListener("click", () => {
-  const isLight = document.body.classList.contains("light");
-  applyTheme(isLight ? "dark" : "light");
-});
-
-window.addEventListener("beforeunload", closeRealtimeStream);
-
-(async function init() {
-  applyTheme(localStorage.getItem("mm-theme") || "dark");
-  renderQuickTags();
-  renderActiveFilters();
-  queryInput.value = "multimodal model";
-  statFavCountEl.textContent = "0";
-  statPageCountEl.textContent = "0";
-  statQueryEl.textContent = queryInput.value;
-  await loadFavorites();
-  await runSearch();
-  setupAutoRefresh();
-  openRealtimeStream();
-})();

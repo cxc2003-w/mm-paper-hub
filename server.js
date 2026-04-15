@@ -123,6 +123,14 @@ function contentTypeFor(ext) {
   return map[ext] || "application/octet-stream";
 }
 
+function buildArxivUrl(q, start, max) {
+  return (
+    "https://export.arxiv.org/api/query?search_query=all:" +
+    encodeURIComponent(q) +
+    `&start=${start}&max_results=${max}&sortBy=submittedDate&sortOrder=descending`
+  );
+}
+
 function fetchText(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith("https://") ? https : http;
@@ -172,12 +180,7 @@ async function handleApi(req, res, urlObj) {
       const q = (urlObj.searchParams.get("q") || "multimodal").trim();
       const start = Number(urlObj.searchParams.get("start") || 0);
       const max = Math.min(Number(urlObj.searchParams.get("max") || 20), 50);
-
-      const arxivUrl =
-        "https://export.arxiv.org/api/query?search_query=all:" +
-        encodeURIComponent(q) +
-        `&start=${start}&max_results=${max}&sortBy=submittedDate&sortOrder=descending`;
-
+      const arxivUrl = buildArxivUrl(q, start, max);
       const xml = await fetchText(arxivUrl);
       const papers = parseArxivAtom(xml);
       sendJson(res, 200, { q, count: papers.length, papers });
@@ -232,6 +235,63 @@ async function handleApi(req, res, urlObj) {
     return true;
   }
 
+  if (urlObj.pathname === "/api/stream" && req.method === "GET") {
+    const q = (urlObj.searchParams.get("q") || "multimodal").trim();
+    const intervalSec = Math.max(15, Math.min(Number(urlObj.searchParams.get("interval") || 60), 300));
+    let alive = true;
+    let knownIds = new Set();
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*"
+    });
+
+    const pushEvent = (event, payload) => {
+      if (!alive || res.writableEnded) return;
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    const poll = async (initial = false) => {
+      try {
+        const xml = await fetchText(buildArxivUrl(q, 0, 8));
+        const papers = parseArxivAtom(xml);
+        const latestIds = new Set(papers.map(p => p.id));
+        if (initial) {
+          knownIds = latestIds;
+          pushEvent("snapshot", { q, count: papers.length, at: Date.now() });
+          return;
+        }
+        const newPapers = papers.filter(p => !knownIds.has(p.id));
+        knownIds = latestIds;
+        if (newPapers.length > 0) {
+          pushEvent("new_papers", { q, count: newPapers.length, papers: newPapers, at: Date.now() });
+        }
+      } catch (error) {
+        pushEvent("stream_error", { message: String(error.message || error) });
+      }
+    };
+
+    res.write(": connected\n\n");
+    poll(true);
+    const pollTimer = setInterval(() => {
+      poll(false);
+    }, intervalSec * 1000);
+    const pingTimer = setInterval(() => {
+      if (!alive || res.writableEnded) return;
+      res.write(": ping\n\n");
+    }, 20000);
+
+    req.on("close", () => {
+      alive = false;
+      clearInterval(pollTimer);
+      clearInterval(pingTimer);
+    });
+    return true;
+  }
+
   return false;
 }
 
@@ -283,3 +343,4 @@ ensureDataFile().then(() => {
     console.log(`MM Paper Hub running on 0.0.0.0:${PORT}`);
   });
 });
+

@@ -8,6 +8,18 @@
   </head>
   <body>
     <div class="bg-glow"></div>
+    <nav class="top-nav">
+      <div class="container nav-inner">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <strong>MM Paper Hub</strong>
+        </div>
+        <div class="nav-actions">
+          <button id="theme-toggle" type="button" class="ghost-btn">切换主题</button>
+          <a class="ghost-btn nav-link" href="https://arxiv.org/" target="_blank" rel="noreferrer">arXiv</a>
+        </div>
+      </div>
+    </nav>
     <header class="container hero">
       <div class="hero-badge">Real arXiv Feed</div>
       <h1>MM Paper Hub</h1>
@@ -21,7 +33,6 @@
           <input id="query" type="text" placeholder="输入关键词，例如：vision language model" />
           <button type="submit">搜索</button>
         </form>
-
         <div class="filters">
           <label>
             每页数量
@@ -49,17 +60,38 @@
             <input id="author-filter" type="text" placeholder="作者名关键词" />
           </label>
         </div>
-
         <div class="meta-row">
           <div class="meta-left">
             <span id="status">准备就绪</span>
             <span id="total-badge" class="result-badge"></span>
+            <span id="last-updated" class="result-badge ghost">未更新</span>
           </div>
           <div class="meta-actions">
             <button id="refresh-favorites" type="button" class="ghost-btn">刷新收藏</button>
             <button id="export-favorites" type="button" class="ghost-btn">导出收藏 JSON</button>
           </div>
         </div>
+        <div class="live-row">
+          <label class="switch-row">
+            <input id="auto-refresh" type="checkbox" />
+            <span>自动刷新</span>
+          </label>
+          <label class="switch-row">
+            <input id="sse-live" type="checkbox" />
+            <span>实时模式</span>
+          </label>
+          <label>
+            间隔
+            <select id="refresh-interval">
+              <option value="30">30 秒</option>
+              <option value="60" selected>60 秒</option>
+              <option value="120">120 秒</option>
+            </select>
+          </label>
+          <span id="live-tip" class="muted">关闭（手动搜索）</span>
+          <span id="sse-status" class="result-badge ghost">实时: 关闭</span>
+        </div>
+        <div id="active-filters" class="active-filters"></div>
       </section>
 
       <section class="stats-grid">
@@ -80,10 +112,8 @@
       <section class="grid">
         <div class="panel">
           <h2>搜索结果</h2>
-          <p id="empty-tips" class="muted hidden">
-            没有结果，试试更具体关键词，如 "multimodal agent planning"
-          </p>
-          <div id="results" class="list"></div>
+          <p id="empty-tips" class="muted hidden">没有结果，试试更具体关键词，如 "multimodal agent planning"</p>
+          <div id="results" class="list card-grid"></div>
           <div class="pagination">
             <button id="prev-page" type="button" class="ghost-btn">上一页</button>
             <span id="page-indicator" class="muted">第 1 页</span>
@@ -113,4 +143,4 @@
 
     <script src="/app.js"></script>
   </body>
-</html>
+  </html>

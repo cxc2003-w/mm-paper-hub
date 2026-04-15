@@ -266,6 +266,7 @@ async function handleApi(req, res, urlObj) {
         }
         const newPapers = papers.filter(p => !knownIds.has(p.id));
         knownIds = latestIds;
+        pushEvent("tick", { q, total: papers.length, at: Date.now() });
         if (newPapers.length > 0) {
           pushEvent("new_papers", { q, count: newPapers.length, papers: newPapers, at: Date.now() });
         }
